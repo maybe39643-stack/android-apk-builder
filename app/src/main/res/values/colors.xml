@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="gold">#FFD700</color>
+    <color name="gold_dark">#DAA520</color>
+    <color name="vip_gold">#FFD700</color>
+    <color name="vip_gold_dark">#B8860B</color>
+    <color name="vip_black">#1A1A2E</color>
+    <color name="vip_purple">#16213E</color>
+    <color name="vip_accent">#0F3460</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="gray_light">#F5F5F5</color>
+    <color name="gray">#9E9E9E</color>
+    <color name="gray_dark">#616161</color>
+    <color name="green">#4CAF50</color>
+    <color name="red">#F44336</color>
+    <color name="delete_red">#E53935</color>
+    <color name="blue">#2196F3</color>
+    <color name="orange">#FF9800</color>
+    <color name="purple">#9C27B0</color>
+    <color name="teal">#009688</color>
+    <color name="pink">#E91E63</color>
+    <color name="brown">#795548</color>
+    <color name="cyan">#00BCD4</color>
+    <color name="dark_bg">#121212</color>
+    <color name="dark_card">#1E1E1E</color>
+    <color name="dark_text">#E0E0E0</color>
+    <color name="progress_bg">#E0E0E0</color>
+    <color name="category_stroke">#E8E8E8</color>
+
+    <!-- Bottom nav selector colors -->
+    <color name="nav_selected">#FFD700</color>
+    <color name="nav_unselected">#9E9E9E</color>
+</resources>

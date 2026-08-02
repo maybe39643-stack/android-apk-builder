@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FileManagerVIP" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/vip_purple</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/gold</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">@color/vip_black</item>
+        <item name="android:navigationBarColor">@color/vip_black</item>
+    </style>
+</resources>
