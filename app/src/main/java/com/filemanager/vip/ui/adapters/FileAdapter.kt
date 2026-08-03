@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.filemanager.vip.R
@@ -13,6 +12,8 @@ import com.filemanager.vip.model.FileCategory
 import com.filemanager.vip.model.FileItem
 import com.filemanager.vip.util.FileUtils
 import com.filemanager.vip.util.Preferences
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.imageview.ShapeableImageView
 
 class FileAdapter(
     private var items: List<FileItem>,
@@ -27,11 +28,11 @@ class FileAdapter(
 
     inner class FileViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val checkbox: CheckBox = view.findViewById(R.id.checkbox)
-        val icon: ImageView = view.findViewById(R.id.iv_icon)
+        val icon: ShapeableImageView = view.findViewById(R.id.iv_icon)
         val name: TextView = view.findViewById(R.id.txt_name)
         val info: TextView = view.findViewById(R.id.txt_info)
-        val star: ImageView = view.findViewById(R.id.iv_star)
-        val more: ImageView = view.findViewById(R.id.iv_more)
+        val star: MaterialButton = view.findViewById(R.id.iv_star)
+        val more: MaterialButton = view.findViewById(R.id.iv_more)
 
         init {
             view.setOnClickListener {
@@ -74,9 +75,8 @@ class FileAdapter(
         holder.icon.setImageResource(iconResFor(item))
         holder.checkbox.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
         holder.checkbox.isChecked = selected.contains(item.file.absolutePath)
-        holder.star.setImageResource(
-            if (Preferences.isFavorite(item.file.absolutePath)) R.drawable.ic_star else R.drawable.ic_star_outline
-        )
+        val isFav = Preferences.isFavorite(item.file.absolutePath)
+        holder.star.setIconResource(if (isFav) R.drawable.ic_star else R.drawable.ic_star_outline)
     }
 
     override fun getItemCount(): Int = items.size

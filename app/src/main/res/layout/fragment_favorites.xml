@@ -12,6 +12,7 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorSurface"
         app:title="@string/favorites"
+        app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
         app:titleTextColor="?attr/colorOnSurface" />
 
     <TextView
@@ -19,7 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:padding="32dp"
+        android:padding="48dp"
         android:text="@string/no_favorites"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="15sp"
@@ -30,5 +31,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="72dp" />
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="88dp" />
 </LinearLayout>

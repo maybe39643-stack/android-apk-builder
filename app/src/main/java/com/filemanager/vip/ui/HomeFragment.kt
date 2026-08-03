@@ -78,7 +78,8 @@ class HomeFragment : Fragment() {
             FileCategory.DOWNLOAD to R.drawable.ic_download,
             FileCategory.FILE to R.drawable.ic_file
         )
-        recyclerCategories.layoutManager = GridLayoutManager(requireContext(), 4)
+        val layoutManager = GridLayoutManager(requireContext(), 4)
+        recyclerCategories.layoutManager = layoutManager
         recyclerCategories.adapter = CategoryAdapter(categories, requireContext()) { cat ->
             openCategory(cat)
         }
@@ -121,7 +122,8 @@ class HomeFragment : Fragment() {
         val root = FileUtils.getPrimaryRoot()
         val files = FileUtils.listFiles(root).filter { it.isFile }.take(8)
         val items = files.map { FileItem(it) }
-        recyclerRecent.layoutManager = LinearLayoutManager(requireContext())
+        val layoutManager = LinearLayoutManager(requireContext())
+        recyclerRecent.layoutManager = layoutManager
         recyclerRecent.adapter = FileAdapter(
             items = items,
             context = requireContext(),

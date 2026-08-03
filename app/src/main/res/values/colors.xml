@@ -1,12 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Modern Material 3 Color Palette -->
+    <color name="primary">#3D5AFE</color>
+    <color name="primary_dark">#0031CA</color>
+    <color name="primary_light">#B2C0FF</color>
+    <color name="on_primary">#FFFFFF</color>
+    
+    <color name="secondary">#651FFF</color>
+    <color name="secondary_dark">#3100B7</color>
+    <color name="secondary_light">#C7B8FF</color>
+    <color name="on_secondary">#FFFFFF</color>
+    
+    <color name="accent">#00C853</color>
+    <color name="accent_dark">#009624</color>
+    <color name="accent_light">#5DFC83</color>
+    <color name="on_accent">#FFFFFF</color>
+    
+    <color name="bg_light">#F6F7FB</color>
+    <color name="bg_dark">#121212</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1E1E1E</color>
+    
+    <color name="text_primary_light">#1A1C22</color>
+    <color name="text_primary_dark">#E8EAED</color>
+    <color name="text_secondary_light">#6B7280</color>
+    <color name="text_secondary_dark">#9AA0A6</color>
+    
+    <!-- Semantic colors -->
+    <color name="success">#00C853</color>
+    <color name="danger">#EF5350</color>
+    <color name="warning">#FFAB40</color>
+    <color name="info">#40C4FF</color>
+    
+    <!-- Category colors -->
+    <color name="cat_folder">#FFB300</color>
+    <color name="cat_image">#2196F3</color>
+    <color name="cat_video">#E91E63</color>
+    <color name="cat_audio">#9C27B0</color>
+    <color name="cat_doc">#FF7043</color>
+    <color name="cat_apk">#00BCD4</color>
+    <color name="cat_download">#4CAF50</color>
+    <color name="cat_file">#607D8B</color>
+    
+    <!-- Gold brand accent for VIP elements -->
+    <color name="brand_gold">#FFD700</color>
+    <color name="brand_gold_dark">#DAA520</color>
+    
+    <!-- Background/divider colors -->
+    <color name="divider_light">#EAECF0</color>
+    <color name="divider_dark">#333333</color>
+    <color name="progress_bg">#E0E0E0</color>
+    
+    <!-- Bottom nav colors -->
+    <color name="nav_selected">#3D5AFE</color>
+    <color name="nav_unselected">#9E9E9E</color>
+    
+    <!-- Keep backward compat names -->
     <color name="gold">#FFD700</color>
     <color name="gold_dark">#DAA520</color>
     <color name="vip_gold">#FFD700</color>
     <color name="vip_gold_dark">#B8860B</color>
     <color name="vip_black">#1A1A2E</color>
-    <color name="vip_purple">#16213E</color>
-    <color name="vip_accent">#0F3460</color>
+    <color name="vip_purple">#3D5AFE</color>
+    <color name="vip_accent">#651FFF</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="gray_light">#F5F5F5</color>
@@ -25,10 +81,5 @@
     <color name="dark_bg">#121212</color>
     <color name="dark_card">#1E1E1E</color>
     <color name="dark_text">#E0E0E0</color>
-    <color name="progress_bg">#E0E0E0</color>
     <color name="category_stroke">#E8E8E8</color>
-
-    <!-- Bottom nav selector colors -->
-    <color name="nav_selected">#FFD700</color>
-    <color name="nav_unselected">#9E9E9E</color>
 </resources>

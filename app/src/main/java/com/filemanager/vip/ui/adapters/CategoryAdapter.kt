@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.filemanager.vip.R
 import com.filemanager.vip.model.FileCategory
+import com.google.android.material.imageview.ShapeableImageView
 
 class CategoryAdapter(
     private var items: List<Pair<FileCategory, Int>>,
@@ -19,7 +20,7 @@ class CategoryAdapter(
     private val counts = mutableMapOf<FileCategory, Int>()
 
     inner class CategoryViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val icon: ImageView = view.findViewById(R.id.iv_cat_icon)
+        val icon: ShapeableImageView = view.findViewById(R.id.iv_cat_icon)
         val name: TextView = view.findViewById(R.id.txt_cat_name)
         val count: TextView = view.findViewById(R.id.txt_cat_count)
 

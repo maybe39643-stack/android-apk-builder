@@ -19,6 +19,7 @@ class FavoritesFragment : Fragment() {
     private lateinit var recyclerFavorites: RecyclerView
     private lateinit var txtEmpty: TextView
     private lateinit var adapter: FileAdapter
+    private var items: List<FileItem> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -28,7 +29,8 @@ class FavoritesFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_favorites, container, false)
         recyclerFavorites = view.findViewById(R.id.recycler_favorites)
         txtEmpty = view.findViewById(R.id.txt_empty_fav)
-        recyclerFavorites.layoutManager = LinearLayoutManager(requireContext())
+        val layoutManager = LinearLayoutManager(requireContext())
+        recyclerFavorites.layoutManager = layoutManager
         return view
     }
 
@@ -39,7 +41,7 @@ class FavoritesFragment : Fragment() {
 
     private fun loadFavorites() {
         val paths = Preferences.getFavorites()
-        val items = paths.mapNotNull { path ->
+        items = paths.mapNotNull { path ->
             val f = File(path)
             if (f.exists()) FileItem(f) else null
         }

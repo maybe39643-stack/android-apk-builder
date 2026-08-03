@@ -31,7 +31,9 @@ import com.filemanager.vip.ui.adapters.FileAdapter
 import com.filemanager.vip.util.FileUtils
 import com.filemanager.vip.util.Preferences
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import java.io.File
 
@@ -50,7 +52,7 @@ class FilesFragment : Fragment() {
     private lateinit var txtPasteInfo: TextView
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var recyclerFiles: RecyclerView
-    private lateinit var fabNewFolder: com.google.android.material.floatingactionbutton.FloatingActionButton
+    private lateinit var fabNewFolder: FloatingActionButton
     private lateinit var adapter: FileAdapter
 
     private val clipboard = mutableListOf<File>()
@@ -122,6 +124,7 @@ class FilesFragment : Fragment() {
         recyclerFiles.adapter = adapter
 
         swipeRefresh.setOnRefreshListener { refresh() }
+        swipeRefresh.setColorSchemeResources(R.color.primary, R.color.secondary, R.color.accent)
 
         fabNewFolder.setOnClickListener { showNewFolderDialog() }
 
@@ -133,24 +136,24 @@ class FilesFragment : Fragment() {
             }
         })
 
-        view?.findViewById<android.widget.ImageView>(R.id.btn_close_selection)?.setOnClickListener {
+        view?.findViewById<MaterialButton>(R.id.btn_close_selection)?.setOnClickListener {
             adapter.setSelectionMode(false)
             updateSelectionBar()
         }
-        view?.findViewById<android.widget.ImageView>(R.id.btn_select_all)?.setOnClickListener {
+        view?.findViewById<MaterialButton>(R.id.btn_select_all)?.setOnClickListener {
             adapter.selectAll()
             updateSelectionBar()
         }
-        view?.findViewById<android.widget.ImageView>(R.id.btn_copy)?.setOnClickListener {
+        view?.findViewById<MaterialButton>(R.id.btn_copy)?.setOnClickListener {
             copySelected()
         }
-        view?.findViewById<android.widget.ImageView>(R.id.btn_move)?.setOnClickListener {
+        view?.findViewById<MaterialButton>(R.id.btn_move)?.setOnClickListener {
             moveSelected()
         }
-        view?.findViewById<android.widget.ImageView>(R.id.btn_delete)?.setOnClickListener {
+        view?.findViewById<MaterialButton>(R.id.btn_delete)?.setOnClickListener {
             deleteSelected()
         }
-        view?.findViewById<Button>(R.id.btn_paste)?.setOnClickListener {
+        view?.findViewById<MaterialButton>(R.id.btn_paste)?.setOnClickListener {
             pasteClipboard()
         }
     }
@@ -334,10 +337,8 @@ class FilesFragment : Fragment() {
             pasteBar.visibility = View.GONE
             return
         }
-        var allOk = true
         clipboard.forEach { f ->
-            val ok = if (clipboardIsCopy) FileUtils.copy(f, currentDir) else FileUtils.move(f, currentDir)
-            if (!ok) allOk = false
+            if (clipboardIsCopy) FileUtils.copy(f, currentDir) else FileUtils.move(f, currentDir)
         }
         clipboard.clear()
         pasteBar.visibility = View.GONE

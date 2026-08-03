@@ -5,25 +5,26 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="24dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/new_folder"
         android:textColor="?attr/colorOnSurface"
-        android:textSize="18sp"
+        android:textSize="20sp"
         android:textStyle="bold" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/input_layout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="20dp"
         android:hint="@string/folder_name"
-        app:boxBackgroundMode="outline"
-        app:boxStrokeColor="@color/vip_gold"
-        app:hintTextColor="@color/vip_gold">
+        app:boxStrokeColor="@color/primary"
+        app:boxStrokeWidth="2dp"
+        app:hintTextColor="@color/primary">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/input_name"
@@ -36,25 +37,27 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="20dp"
         android:gravity="end"
         android:orientation="horizontal">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cancel"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/cancel"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_ok"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="@color/vip_gold"
+            android:layout_marginStart="8dp"
+            android:backgroundTint="@color/primary"
             android:text="@string/create"
-            android:textColor="@color/black"
-            android:textStyle="bold" />
+            android:textColor="@color/on_primary"
+            android:textStyle="bold"
+            app:cornerRadius="28dp" />
     </LinearLayout>
 </LinearLayout>

@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
@@ -12,13 +11,14 @@ import androidx.fragment.app.Fragment
 import com.filemanager.vip.R
 import com.filemanager.vip.ads.AdManager
 import com.filemanager.vip.util.Preferences
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 class SettingsFragment : Fragment() {
 
     private lateinit var txtVipStatus: TextView
-    private lateinit var btnWatchAd: Button
+    private lateinit var btnWatchAd: MaterialButton
     private lateinit var switchDark: SwitchMaterial
     private lateinit var vipCard: MaterialCardView
 

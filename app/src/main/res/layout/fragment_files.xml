@@ -14,98 +14,128 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorSurface"
         app:title="@string/files"
+        app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
         app:titleTextColor="?attr/colorOnSurface"
+        app:subtitleTextAppearance="@style/TextAppearance.Material3.BodySmall"
         app:subtitleTextColor="?attr/colorOnSurfaceVariant" />
 
     <!-- Search -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/search_layout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        app:boxBackgroundMode="outline"
-        app:boxCornerRadiusBottomEnd="24dp"
-        app:boxCornerRadiusBottomStart="24dp"
-        app:boxCornerRadiusTopEnd="24dp"
-        app:boxCornerRadiusTopStart="24dp"
-        app:boxStrokeColor="@color/vip_gold"
-        app:hintTextColor="@color/vip_gold">
+        android:layout_marginBottom="4dp"
+        app:boxCornerRadiusBottomEnd="28dp"
+        app:boxCornerRadiusBottomStart="28dp"
+        app:boxCornerRadiusTopEnd="28dp"
+        app:boxCornerRadiusTopStart="28dp"
+        app:boxStrokeColor="@color/primary"
+        app:boxStrokeWidth="2dp"
+        app:endIconMode="clear_text"
+        app:hintTextAppearance="@style/TextAppearance.Material3.BodyMedium">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/search_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_files"
+            android:drawablePadding="12dp"
+            android:drawableTint="?attr/colorOnSurfaceVariant"
             android:hint="@string/search"
             android:imeOptions="actionSearch"
             android:inputType="text"
-            android:maxLines="1" />
+            android:maxLines="1"
+            android:paddingStart="4dp" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Selection action bar (visible in multi-select) -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/selection_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:visibility="gone">
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp">
 
-        <ImageView
-            android:id="@+id/btn_close_selection"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@string/cancel"
-            android:padding="10dp"
-            android:src="@drawable/ic_close" />
-
-        <TextView
-            android:id="@+id/txt_selection_count"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="0"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="4dp">
 
-        <ImageView
-            android:id="@+id/btn_select_all"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@string/select_all"
-            android:padding="10dp"
-            android:src="@drawable/ic_select_all" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_close_selection"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/cancel"
+                android:src="@drawable/ic_close"
+                app:icon="@drawable/ic_close"
+                app:iconSize="20dp"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
 
-        <ImageView
-            android:id="@+id/btn_copy"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@string/copy"
-            android:padding="10dp"
-            android:src="@drawable/ic_copy" />
+            <TextView
+                android:id="@+id/txt_selection_count"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <ImageView
-            android:id="@+id/btn_move"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@string/move"
-            android:padding="10dp"
-            android:src="@drawable/ic_move" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_select_all"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/select_all"
+                app:icon="@drawable/ic_select_all"
+                app:iconSize="20dp"
+                app:iconTint="@color/primary" />
 
-        <ImageView
-            android:id="@+id/btn_delete"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@string/delete"
-            android:padding="10dp"
-            android:src="@drawable/ic_delete" />
-    </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_copy"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/copy"
+                app:icon="@drawable/ic_copy"
+                app:iconSize="20dp"
+                app:iconTint="@color/primary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_move"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/move"
+                app:icon="@drawable/ic_move"
+                app:iconSize="20dp"
+                app:iconTint="@color/primary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_delete"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/delete"
+                app:icon="@drawable/ic_delete"
+                app:iconSize="20dp"
+                app:iconTint="@color/delete_red" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Path bar -->
     <TextView
@@ -113,43 +143,58 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="middle"
+        android:fontFamily="monospace"
         android:maxLines="1"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:text="/storage/emulated/0"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
+        android:textSize="12sp" />
 
     <!-- Paste bar -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/paste_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/vip_gold"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="10dp"
-        android:visibility="gone">
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/primary"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="3dp">
 
-        <TextView
-            android:id="@+id/txt_paste_info"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/black"
-            android:textSize="14sp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
-        <Button
-            android:id="@+id/btn_paste"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/paste"
-            android:textColor="@color/black"
-            android:textStyle="bold" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/txt_paste_info"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/on_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_paste"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/paste"
+                android:textColor="@color/brand_gold"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
@@ -162,7 +207,10 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="72dp" />
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="88dp" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- FAB: New folder -->
@@ -174,6 +222,7 @@
         android:layout_margin="20dp"
         android:contentDescription="@string/new_folder"
         android:src="@drawable/ic_new_folder"
-        app:backgroundTint="@color/vip_gold"
-        app:tint="@color/black" />
+        app:backgroundTint="@color/primary"
+        app:tint="@color/on_primary"
+        app:elevation="6dp" />
 </LinearLayout>

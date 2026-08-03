@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -11,23 +12,25 @@
         android:layout_height="wrap_content"
         android:text="@string/properties"
         android:textColor="?attr/colorOnSurface"
-        android:textSize="18sp"
+        android:textSize="20sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/prop_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="20dp"
         android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp"
+        android:textSize="17sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/prop_path"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
+        android:fontFamily="monospace"
+        android:lineSpacingExtra="3dp"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="13sp" />
 
@@ -35,33 +38,34 @@
         android:id="@+id/prop_size"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/prop_modified"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/prop_items"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/prop_btn_close"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:backgroundTint="@color/vip_gold"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/primary"
         android:text="@string/done"
-        android:textColor="@color/black"
-        android:textStyle="bold" />
+        android:textColor="@color/on_primary"
+        android:textStyle="bold"
+        app:cornerRadius="28dp" />
 </LinearLayout>
