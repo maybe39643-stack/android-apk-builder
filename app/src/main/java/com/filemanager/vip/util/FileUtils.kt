@@ -13,14 +13,20 @@ object FileUtils {
     /** Get all storage roots (internal + SD cards) */
     fun getStorageRoots(): List<File> {
         val roots = mutableListOf<File>()
-        val internal = Environment.getExternalStorageDirectory()
-        if (internal.exists()) roots.add(internal)
+        try {
+            val internal = Environment.getExternalStorageDirectory()
+            if (internal.exists()) roots.add(internal)
 
-        // Check for secondary storage (SD card)
-        val secondary = System.getenv("SECONDARY_STORAGE")
-        secondary?.split(":")?.forEach { path ->
-            val f = File(path)
-            if (f.exists() && f.canRead()) roots.add(f)
+            // Check for secondary storage (SD card)
+            val secondary = System.getenv("SECONDARY_STORAGE")
+            secondary?.split(":")?.forEach { path ->
+                val f = File(path)
+                if (f.exists() && f.canRead()) roots.add(f)
+            }
+        } catch (e: Exception) {
+            // Fallback to just internal storage
+            roots.clear()
+            roots.add(Environment.getExternalStorageDirectory())
         }
         return roots.distinctBy { it.absolutePath }
     }
@@ -32,23 +38,35 @@ object FileUtils {
 
     /** List files in directory, sorted: folders first then files */
     fun listFiles(dir: File): List<File> {
-        if (!dir.exists() || !dir.isDirectory) return emptyList()
-        val files = dir.listFiles() ?: return emptyList()
-        return files
-            .filter { !it.name.startsWith(".") }
-            .sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+        try {
+            if (!dir.exists() || !dir.isDirectory) return emptyList()
+            val files = dir.listFiles() ?: return emptyList()
+            return files
+                .filter { !it.name.startsWith(".") }
+                .sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+        } catch (e: SecurityException) {
+            return emptyList() // Permission denied - return empty list
+        } catch (e: Exception) {
+            return emptyList()
+        }
     }
 
     /** Recursively count files in a directory (for progress stats) */
     fun countFiles(dir: File): Pair<Long, Long> {
         var fileCount = 0L
         var totalSize = 0L
-        dir.walkTopDown().forEach { f ->
-            if (f.isFile) {
-                fileCount++
-                totalSize += f.length()
+        try {
+            dir.walkTopDown().forEach { f ->
+                if (f.isFile) {
+                    fileCount++
+                    totalSize += f.length()
+                }
+                if (fileCount > 5000) return fileCount to totalSize // safety limit
             }
-            if (fileCount > 5000) return fileCount to totalSize // safety limit
+        } catch (e: SecurityException) {
+            // Permission denied
+        } catch (e: Exception) {
+            // Any other error
         }
         return fileCount to totalSize
     }
@@ -66,7 +84,11 @@ object FileUtils {
     }
 
     fun formatDate(timestamp: Long): String {
-        return SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
+        return try {
+            SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
+        } catch (e: Exception) {
+            "-"
+        }
     }
 
     /** Get storage usage info for a path */
@@ -136,16 +158,24 @@ object FileUtils {
         fun walk(f: File, depth: Int) {
             if (results.size >= maxResults) return
             if (depth > 4) return
-            val children = f.listFiles() ?: return
+            val children = try { f.listFiles() } catch (e: Exception) { return }
+            if (children == null) return
             for (child in children) {
-                if (child.name.lowercase().contains(q)) {
-                    results.add(child)
-                    if (results.size >= maxResults) return
+                try {
+                    if (child.name.lowercase().contains(q)) {
+                        results.add(child)
+                        if (results.size >= maxResults) return
+                    }
+                    if (child.isDirectory) walk(child, depth + 1)
+                } catch (e: Exception) {
+                    // Skip inaccessible files
+                    continue
                 }
-                if (child.isDirectory) walk(child, depth + 1)
             }
         }
-        walk(dir, 0)
+        try {
+            walk(dir, 0)
+        } catch (e: Exception) { /* ignore */ }
         return results
     }
 }

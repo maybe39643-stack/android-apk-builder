@@ -41,7 +41,6 @@ class FilesFragment : Fragment() {
 
     private var currentDir: File = FileUtils.getPrimaryRoot()
     private var filterCategory: FileCategory? = null
-    private var allItems: List<FileItem> = emptyList()
 
     private lateinit var toolbar: MaterialToolbar
     private lateinit var searchInput: TextInputEditText
@@ -66,7 +65,7 @@ class FilesFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.getString(ARG_CATEGORY)?.let { name ->
-            filterCategory = FileCategory.valueOf(name)
+            filterCategory = runCatching { FileCategory.valueOf(name) }.getOrNull()
         }
     }
 
@@ -80,14 +79,35 @@ class FilesFragment : Fragment() {
         setupToolbar()
         setupListeners()
         if (filterCategory == null) {
-            currentDir = File(Preferences.getLastDir()).takeIf { it.exists() } ?: FileUtils.getPrimaryRoot()
+            currentDir = try {
+                File(Preferences.getLastDir()).takeIf { it.exists() } ?: FileUtils.getPrimaryRoot()
+            } catch (e: Exception) {
+                FileUtils.getPrimaryRoot()
+            }
         }
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        if (ensurePermission()) refresh() else swipeRefresh.isRefreshing = false
+        try {
+            if (ensurePermission()) refresh() else swipeRefresh.isRefreshing = false
+        } catch (e: Exception) {
+            // Don't crash if permission check fails
+            swipeRefresh.isRefreshing = false
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-check permission when returning from settings
+        try {
+            if (::adapter.isInitialized && ensurePermission()) {
+                refresh()
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
 
     private fun bindViews(view: View) {
@@ -124,7 +144,9 @@ class FilesFragment : Fragment() {
         recyclerFiles.adapter = adapter
 
         swipeRefresh.setOnRefreshListener { refresh() }
-        swipeRefresh.setColorSchemeResources(R.color.primary, R.color.secondary, R.color.accent)
+        try {
+            swipeRefresh.setColorSchemeResources(R.color.primary, R.color.secondary, R.color.accent)
+        } catch (e: Exception) { /* ignore */ }
 
         fabNewFolder.setOnClickListener { showNewFolderDialog() }
 
@@ -136,126 +158,179 @@ class FilesFragment : Fragment() {
             }
         })
 
-        view?.findViewById<MaterialButton>(R.id.btn_close_selection)?.setOnClickListener {
-            adapter.setSelectionMode(false)
-            updateSelectionBar()
-        }
-        view?.findViewById<MaterialButton>(R.id.btn_select_all)?.setOnClickListener {
+        // Selection bar buttons - wrap in safe click handlers
+        try {
+            view?.findViewById<MaterialButton>(R.id.btn_close_selection)?.setOnClickListener {
+                safeSetSelectionMode(false)
+                updateSelectionBar()
+            }
+            view?.findViewById<MaterialButton>(R.id.btn_select_all)?.setOnClickListener {
+                safeSelectAll()
+                updateSelectionBar()
+            }
+            view?.findViewById<MaterialButton>(R.id.btn_copy)?.setOnClickListener {
+                copySelected()
+            }
+            view?.findViewById<MaterialButton>(R.id.btn_move)?.setOnClickListener {
+                moveSelected()
+            }
+            view?.findViewById<MaterialButton>(R.id.btn_delete)?.setOnClickListener {
+                deleteSelected()
+            }
+            view?.findViewById<MaterialButton>(R.id.btn_paste)?.setOnClickListener {
+                pasteClipboard()
+            }
+        } catch (e: Exception) { /* ignore missing buttons */ }
+    }
+
+    private fun safeSetSelectionMode(mode: Boolean) {
+        try {
+            adapter.setSelectionMode(mode)
+        } catch (e: Exception) { /* ignore */ }
+    }
+
+    private fun safeSelectAll() {
+        try {
             adapter.selectAll()
-            updateSelectionBar()
-        }
-        view?.findViewById<MaterialButton>(R.id.btn_copy)?.setOnClickListener {
-            copySelected()
-        }
-        view?.findViewById<MaterialButton>(R.id.btn_move)?.setOnClickListener {
-            moveSelected()
-        }
-        view?.findViewById<MaterialButton>(R.id.btn_delete)?.setOnClickListener {
-            deleteSelected()
-        }
-        view?.findViewById<MaterialButton>(R.id.btn_paste)?.setOnClickListener {
-            pasteClipboard()
-        }
+        } catch (e: Exception) { /* ignore */ }
     }
 
     private fun ensurePermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (Environment.isExternalStorageManager()) {
-                true
-            } else {
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.storage_permission_title)
-                    .setMessage(R.string.permission_needed)
-                    .setPositiveButton(R.string.grant) { _, _ ->
-                        try {
-                            startActivity(
-                                Intent(
-                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                    Uri.parse("package:${requireContext().packageName}")
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    true
+                } else {
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.storage_permission_title)
+                        .setMessage(R.string.permission_needed)
+                        .setPositiveButton(R.string.grant) { _, _ ->
+                            try {
+                                startActivity(
+                                    Intent(
+                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                        Uri.parse("package:${requireContext().packageName}")
+                                    )
                                 )
-                            )
-                        } catch (e: Exception) {
-                            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                            } catch (e: Exception) {
+                                try {
+                                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                                } catch (e2: Exception) {
+                                    Toast.makeText(requireContext(), R.string.cannot_open, Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
-                    }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
-                false
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                    false
+                }
+            } else {
+                val perms = mutableListOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+                    perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+                val needed = perms.filter {
+                    ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (needed.isEmpty()) true
+                else {
+                    permissionLauncher.launch(needed.toTypedArray())
+                    false
+                }
             }
-        } else {
-            val perms = mutableListOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-                perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-            val needed = perms.filter {
-                ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
-            }
-            if (needed.isEmpty()) true
-            else {
-                permissionLauncher.launch(needed.toTypedArray())
-                false
-            }
+        } catch (e: Exception) {
+            // Fallback to storage check
+            false
         }
     }
 
     private fun refresh() {
-        val items = if (filterCategory != null) {
-            FileUtils.listFiles(FileUtils.getPrimaryRoot())
-                .map { FileItem(it) }
-                .filter { it.category == filterCategory }
-        } else {
-            FileUtils.listFiles(currentDir).map { FileItem(it) }
+        try {
+            val items = if (filterCategory != null) {
+                try {
+                    FileUtils.listFiles(FileUtils.getPrimaryRoot())
+                        .map { FileItem(it) }
+                        .filter { it.category == filterCategory }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } else {
+                try {
+                    FileUtils.listFiles(currentDir).map { FileItem(it) }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+            allItems = items
+            adapter.updateItems(items)
+            txtPath.text = if (filterCategory != null) getString(R.string.files) else currentDir.absolutePath
+            swipeRefresh.isRefreshing = false
+            if (filterCategory == null) {
+                try {
+                    Preferences.setLastDir(currentDir.absolutePath)
+                } catch (e: Exception) { /* ignore */ }
+            }
+            updateToolbar()
+        } catch (e: Exception) {
+            swipeRefresh.isRefreshing = false
+            // Show error but don't crash
+            try {
+                Toast.makeText(requireContext(), "Error loading files", Toast.LENGTH_SHORT).show()
+            } catch (e2: Exception) { /* ignore */ }
         }
-        allItems = items
-        adapter.updateItems(items)
-        txtPath.text = if (filterCategory != null) getString(R.string.files) else currentDir.absolutePath
-        swipeRefresh.isRefreshing = false
-        if (filterCategory == null) {
-            Preferences.setLastDir(currentDir.absolutePath)
-        }
-        updateToolbar()
     }
+
+    private var allItems: List<FileItem> = emptyList()
 
     private fun applySearch(query: String) {
         val q = query.trim().lowercase()
-        adapter.updateItems(
-            if (q.isEmpty()) allItems else allItems.filter { it.name.lowercase().contains(q) }
-        )
+        try {
+            adapter.updateItems(
+                if (q.isEmpty()) allItems else allItems.filter { it.name.lowercase().contains(q) }
+            )
+        } catch (e: Exception) { /* ignore */ }
     }
 
     private fun updateToolbar() {
-        val canGoUp = filterCategory == null &&
-            currentDir.absolutePath != FileUtils.getPrimaryRoot().absolutePath
-        if (canGoUp) {
-            val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_chevron)
-            if (drawable != null) {
-                val rotated = android.graphics.drawable.RotateDrawable().apply {
-                    this.drawable = drawable
-                    fromDegrees = 0f
-                    toDegrees = 180f
-                    level = 10000
+        try {
+            val canGoUp = filterCategory == null &&
+                currentDir.absolutePath != FileUtils.getPrimaryRoot().absolutePath
+            if (canGoUp) {
+                val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_chevron)
+                if (drawable != null) {
+                    val rotated = android.graphics.drawable.RotateDrawable().apply {
+                        this.drawable = drawable
+                        fromDegrees = 0f
+                        toDegrees = 180f
+                        level = 10000
+                    }
+                    toolbar.navigationIcon = rotated
                 }
-                toolbar.navigationIcon = rotated
+                toolbar.setNavigationOnClickListener {
+                    currentDir = currentDir.parentFile ?: FileUtils.getPrimaryRoot()
+                    searchInput.setText("")
+                    refresh()
+                }
+            } else {
+                toolbar.navigationIcon = null
             }
-            toolbar.setNavigationOnClickListener {
-                currentDir = currentDir.parentFile ?: FileUtils.getPrimaryRoot()
-                searchInput.setText("")
-                refresh()
-            }
-        } else {
-            toolbar.navigationIcon = null
-        }
+        } catch (e: Exception) { /* ignore */ }
     }
 
     private fun onFileClick(item: FileItem) {
         if (adapter.isSelectionMode()) return
         if (item.isDirectory) {
+            val dirFile = item.file
+            if (!dirFile.exists() || !dirFile.canRead()) {
+                toastMessage(R.string.cannot_open)
+                return
+            }
             if (filterCategory != null) {
-                currentDir = item.file
+                currentDir = dirFile
                 filterCategory = null
-                toolbar.subtitle = null
+                try { toolbar.subtitle = null } catch (e: Exception) { }
             } else {
-                currentDir = item.file
+                currentDir = dirFile
             }
             searchInput.setText("")
             refresh()
@@ -265,239 +340,309 @@ class FilesFragment : Fragment() {
     }
 
     private fun toggleFavorite(item: FileItem) {
-        val path = item.file.absolutePath
-        if (Preferences.isFavorite(path)) {
-            Preferences.removeFavorite(path)
-        } else {
-            Preferences.addFavorite(path)
+        try {
+            val path = item.file.absolutePath
+            if (Preferences.isFavorite(path)) {
+                Preferences.removeFavorite(path)
+            } else {
+                Preferences.addFavorite(path)
+            }
+            adapter.updateItems(allItems)
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
         }
-        adapter.updateItems(allItems)
     }
 
     private fun updateSelectionBar() {
-        val inSelection = adapter.isSelectionMode()
-        selectionBar.visibility = if (inSelection) View.VISIBLE else View.GONE
-        txtSelectionCount.text = adapter.getSelectedCount().toString()
-        if (!inSelection) {
-            adapter.updateItems(allItems)
-        }
+        try {
+            val inSelection = adapter.isSelectionMode()
+            selectionBar.visibility = if (inSelection) View.VISIBLE else View.GONE
+            txtSelectionCount.text = adapter.getSelectedCount().toString()
+            if (!inSelection) {
+                adapter.updateItems(allItems)
+            }
+        } catch (e: Exception) { /* ignore */ }
     }
 
     private fun copySelected() {
-        val selected = adapter.getSelectedItems()
-        if (selected.isEmpty()) return
-        clipboard.clear()
-        clipboard.addAll(selected.map { it.file })
-        clipboardIsCopy = true
-        adapter.setSelectionMode(false)
-        updateSelectionBar()
-        showPasteBar()
+        try {
+            val selected = adapter.getSelectedItems()
+            if (selected.isEmpty()) return
+            clipboard.clear()
+            clipboard.addAll(selected.map { it.file })
+            clipboardIsCopy = true
+            adapter.setSelectionMode(false)
+            updateSelectionBar()
+            showPasteBar()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
+        }
     }
 
     private fun moveSelected() {
-        val selected = adapter.getSelectedItems()
-        if (selected.isEmpty()) return
-        clipboard.clear()
-        clipboard.addAll(selected.map { it.file })
-        clipboardIsCopy = false
-        adapter.setSelectionMode(false)
-        updateSelectionBar()
-        showPasteBar()
+        try {
+            val selected = adapter.getSelectedItems()
+            if (selected.isEmpty()) return
+            clipboard.clear()
+            clipboard.addAll(selected.map { it.file })
+            clipboardIsCopy = false
+            adapter.setSelectionMode(false)
+            updateSelectionBar()
+            showPasteBar()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
+        }
     }
 
     private fun deleteSelected() {
-        val selected = adapter.getSelectedItems()
-        if (selected.isEmpty()) return
-        confirmDelete(selected.map { it.file })
+        try {
+            val selected = adapter.getSelectedItems()
+            if (selected.isEmpty()) return
+            confirmDelete(selected.map { it.file })
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
+        }
     }
 
     private fun confirmDelete(files: List<File>) {
-        val names = files.joinToString(", ") { it.name }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.delete)
-            .setMessage(getString(R.string.delete_confirm, names))
-            .setPositiveButton(R.string.delete) { _, _ ->
-                files.forEach { FileUtils.delete(it) }
-                adapter.setSelectionMode(false)
-                updateSelectionBar()
-                refresh()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        try {
+            val names = files.joinToString(", ") { it.name }
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.delete)
+                .setMessage(getString(R.string.delete_confirm, names))
+                .setPositiveButton(R.string.delete) { _, _ ->
+                    files.forEach { f ->
+                        try { FileUtils.delete(f) } catch (e: Exception) { }
+                    }
+                    try {
+                        adapter.setSelectionMode(false)
+                    } catch (e: Exception) { }
+                    updateSelectionBar()
+                    refresh()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
+        }
     }
 
     private fun showPasteBar() {
-        pasteBar.visibility = View.VISIBLE
-        val action = if (clipboardIsCopy) getString(R.string.copy) else getString(R.string.move)
-        txtPasteInfo.text = "$action (${clipboard.size}) → ${currentDir.name}"
+        try {
+            pasteBar.visibility = View.VISIBLE
+            val action = if (clipboardIsCopy) getString(R.string.copy) else getString(R.string.move)
+            txtPasteInfo.text = "$action (${clipboard.size}) → ${currentDir.name}"
+        } catch (e: Exception) { /* ignore */ }
     }
 
     private fun pasteClipboard() {
-        if (clipboard.isEmpty()) {
+        try {
+            if (clipboard.isEmpty()) {
+                pasteBar.visibility = View.GONE
+                return
+            }
+            clipboard.forEach { f ->
+                if (clipboardIsCopy) {
+                    try { FileUtils.copy(f, currentDir) } catch (e: Exception) { }
+                } else {
+                    try { FileUtils.move(f, currentDir) } catch (e: Exception) { }
+                }
+            }
+            clipboard.clear()
             pasteBar.visibility = View.GONE
-            return
+            refresh()
+            toastMessage(R.string.done)
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
         }
-        clipboard.forEach { f ->
-            if (clipboardIsCopy) FileUtils.copy(f, currentDir) else FileUtils.move(f, currentDir)
-        }
-        clipboard.clear()
-        pasteBar.visibility = View.GONE
-        refresh()
-        Toast.makeText(requireContext(), R.string.done, Toast.LENGTH_SHORT).show()
     }
 
     private fun showNewFolderDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_new_folder, null)
-        val input = dialogView.findViewById<TextInputEditText>(R.id.input_name)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btn_cancel)
-        val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
-        val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setView(dialogView)
-            .create()
-        btnCancel.setOnClickListener { dialog.dismiss() }
-        btnOk.setOnClickListener {
-            val name = input.text?.toString()?.trim().orEmpty()
-            if (name.isEmpty()) {
-                Toast.makeText(requireContext(), R.string.invalid_name, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+        try {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_new_folder, null)
+            val input = dialogView.findViewById<TextInputEditText>(R.id.input_name)
+            val btnCancel = dialogView.findViewById<Button>(R.id.btn_cancel)
+            val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
+            val dialog = MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .create()
+            btnCancel.setOnClickListener { try { dialog.dismiss() } catch (e: Exception) { } }
+            btnOk.setOnClickListener {
+                val name = input.text?.toString()?.trim().orEmpty()
+                if (name.isEmpty()) {
+                    toastMessage(R.string.invalid_name)
+                    return@setOnClickListener
+                }
+                try {
+                    if (name.contains('/') || name.contains('\\')) {
+                        toastMessage(R.string.invalid_name)
+                        return@setOnClickListener
+                    }
+                    val newDir = File(currentDir, name)
+                    if (newDir.exists()) {
+                        toastMessageMessage(getString(R.string.already_exists, name))
+                        return@setOnClickListener
+                    }
+                    if (newDir.mkdirs()) {
+                        try { dialog.dismiss() } catch (e: Exception) { }
+                        refresh()
+                    } else {
+                        toastMessage(R.string.error)
+                    }
+                } catch (e: Exception) {
+                    toastMessage(R.string.error)
+                }
             }
-            val newDir = File(currentDir, name)
-            if (newDir.exists()) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.already_exists, name),
-                    Toast.LENGTH_SHORT
-                ).show()
-                return@setOnClickListener
-            }
-            if (newDir.mkdirs()) {
-                dialog.dismiss()
-                refresh()
-            } else {
-                Toast.makeText(requireContext(), R.string.error, Toast.LENGTH_SHORT).show()
-            }
+            dialog.show()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
         }
-        dialog.show()
     }
 
     private fun showActionsDialog(item: FileItem) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_file_actions, null)
-        val title = dialogView.findViewById<TextView>(R.id.dialog_title)
-        val actionOpen = dialogView.findViewById<TextView>(R.id.action_open)
-        val actionRename = dialogView.findViewById<TextView>(R.id.action_rename)
-        val actionCopy = dialogView.findViewById<TextView>(R.id.action_copy)
-        val actionMove = dialogView.findViewById<TextView>(R.id.action_move)
-        val actionShare = dialogView.findViewById<TextView>(R.id.action_share)
-        val actionProperties = dialogView.findViewById<TextView>(R.id.action_properties)
-        val actionDelete = dialogView.findViewById<TextView>(R.id.action_delete)
+        try {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_file_actions, null)
+            val title = dialogView.findViewById<TextView>(R.id.dialog_title)
+            val actionOpen = dialogView.findViewById<TextView>(R.id.action_open)
+            val actionRename = dialogView.findViewById<TextView>(R.id.action_rename)
+            val actionCopy = dialogView.findViewById<TextView>(R.id.action_copy)
+            val actionMove = dialogView.findViewById<TextView>(R.id.action_move)
+            val actionShare = dialogView.findViewById<TextView>(R.id.action_share)
+            val actionProperties = dialogView.findViewById<TextView>(R.id.action_properties)
+            val actionDelete = dialogView.findViewById<TextView>(R.id.action_delete)
 
-        title.text = item.name
-        if (item.isDirectory) {
-            actionOpen.visibility = View.GONE
-            actionShare.visibility = View.GONE
-        }
+            title.text = item.name
+            if (item.isDirectory) {
+                actionOpen.visibility = View.GONE
+                actionShare.visibility = View.GONE
+            }
 
-        val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setView(dialogView)
-            .create()
+            val dialog = MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .create()
 
-        actionOpen.setOnClickListener {
-            dialog.dismiss()
-            openFileWithIntent(requireContext(), item.file)
+            actionOpen.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                openFileWithIntent(requireContext(), item.file)
+            }
+            actionRename.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                showRenameDialog(item)
+            }
+            actionCopy.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                clipboard.clear()
+                clipboard.add(item.file)
+                clipboardIsCopy = true
+                showPasteBar()
+            }
+            actionMove.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                clipboard.clear()
+                clipboard.add(item.file)
+                clipboardIsCopy = false
+                showPasteBar()
+            }
+            actionShare.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                shareFile(item.file)
+            }
+            actionProperties.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                showPropertiesDialog(item)
+            }
+            actionDelete.setOnClickListener {
+                try { dialog.dismiss() } catch (e: Exception) { }
+                confirmDelete(listOf(item.file))
+            }
+            dialog.show()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
         }
-        actionRename.setOnClickListener {
-            dialog.dismiss()
-            showRenameDialog(item)
-        }
-        actionCopy.setOnClickListener {
-            dialog.dismiss()
-            clipboard.clear()
-            clipboard.add(item.file)
-            clipboardIsCopy = true
-            showPasteBar()
-        }
-        actionMove.setOnClickListener {
-            dialog.dismiss()
-            clipboard.clear()
-            clipboard.add(item.file)
-            clipboardIsCopy = false
-            showPasteBar()
-        }
-        actionShare.setOnClickListener {
-            dialog.dismiss()
-            shareFile(item.file)
-        }
-        actionProperties.setOnClickListener {
-            dialog.dismiss()
-            showPropertiesDialog(item)
-        }
-        actionDelete.setOnClickListener {
-            dialog.dismiss()
-            confirmDelete(listOf(item.file))
-        }
-        dialog.show()
     }
 
     private fun showRenameDialog(item: FileItem) {
-        val input = EditText(requireContext()).apply {
-            setText(item.name)
-            selectAll()
-        }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.rename_to)
-            .setView(input)
-            .setPositiveButton(R.string.create) { _, _ ->
-                val newName = input.text.toString().trim()
-                if (newName.isEmpty()) return@setPositiveButton
-                val newFile = File(item.file.parentFile, newName)
-                if (newFile.exists()) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.already_exists, newName),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return@setPositiveButton
-                }
-                if (item.file.renameTo(newFile)) {
-                    refresh()
-                } else {
-                    Toast.makeText(requireContext(), R.string.error, Toast.LENGTH_SHORT).show()
-                }
+        try {
+            val input = EditText(requireContext()).apply {
+                setText(item.name)
+                selectAll()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.rename_to)
+                .setView(input)
+                .setPositiveButton(R.string.create) { _, _ ->
+                    val newName = input.text.toString().trim()
+                    if (newName.isEmpty()) return@setPositiveButton
+                    try {
+                        if (newName.contains('/') || newName.contains('\\')) {
+                            toastMessage(R.string.invalid_name)
+                            return@setPositiveButton
+                        }
+                        val newFile = File(item.file.parentFile, newName)
+                        if (newFile.exists()) {
+                            toastMessageMessage(getString(R.string.already_exists, newName))
+                            return@setPositiveButton
+                        }
+                        if (item.file.renameTo(newFile)) {
+                            refresh()
+                        } else {
+                            toastMessage(R.string.error)
+                        }
+                    } catch (e: Exception) {
+                        toastMessage(R.string.error)
+                    }
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
+        }
     }
 
     private fun showPropertiesDialog(item: FileItem) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_properties, null)
-        val propName = dialogView.findViewById<TextView>(R.id.prop_name)
-        val propPath = dialogView.findViewById<TextView>(R.id.prop_path)
-        val propSize = dialogView.findViewById<TextView>(R.id.prop_size)
-        val propModified = dialogView.findViewById<TextView>(R.id.prop_modified)
-        val propItems = dialogView.findViewById<TextView>(R.id.prop_items)
-        val btnClose = dialogView.findViewById<Button>(R.id.prop_btn_close)
+        try {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_properties, null)
+            val propName = dialogView.findViewById<TextView>(R.id.prop_name)
+            val propPath = dialogView.findViewById<TextView>(R.id.prop_path)
+            val propSize = dialogView.findViewById<TextView>(R.id.prop_size)
+            val propModified = dialogView.findViewById<TextView>(R.id.prop_modified)
+            val propItems = dialogView.findViewById<TextView>(R.id.prop_items)
+            val btnClose = dialogView.findViewById<Button>(R.id.prop_btn_close)
 
-        propName.text = item.name
-        propPath.text = getString(R.string.path) + ": " + item.file.absolutePath
-        propModified.text = getString(R.string.modified) + ": " + FileUtils.formatDate(item.lastModified)
-        if (item.isDirectory) {
-            val (count, _) = FileUtils.countFiles(item.file)
-            propSize.visibility = View.GONE
-            propItems.text = getString(R.string.items) + ": $count"
-        } else {
-            propSize.text = getString(R.string.size) + ": " + FileUtils.formatSize(item.size)
-            propItems.visibility = View.GONE
+            propName.text = item.name
+            propPath.text = getString(R.string.path) + ": " + item.file.absolutePath
+            propModified.text = getString(R.string.modified) + ": " +
+                try { FileUtils.formatDate(item.lastModified) } catch (e: Exception) { "-" }
+            
+            if (item.isDirectory) {
+                val (count, _) = try {
+                    FileUtils.countFiles(item.file)
+                } catch (e: Exception) {
+                    0L to 0L
+                }
+                propSize.visibility = View.GONE
+                propItems.text = getString(R.string.items) + ": $count"
+            } else {
+                propSize.text = getString(R.string.size) + ": " + FileUtils.formatSize(item.size)
+                propItems.visibility = View.GONE
+            }
+
+            val dialog = MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .create()
+            btnClose.setOnClickListener { try { dialog.dismiss() } catch (e: Exception) { } }
+            dialog.show()
+        } catch (e: Exception) {
+            toastMessage(R.string.error)
         }
-
-        val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setView(dialogView)
-            .create()
-        btnClose.setOnClickListener { dialog.dismiss() }
-        dialog.show()
     }
 
     private fun shareFile(file: File) {
         try {
+            if (!file.exists()) {
+                toastMessage(R.string.cannot_open)
+                return
+            }
             val uri = FileProvider.getUriForFile(
                 requireContext(),
                 requireContext().packageName + ".fileprovider",
@@ -510,8 +655,20 @@ class FilesFragment : Fragment() {
             }
             startActivity(Intent.createChooser(intent, getString(R.string.share)))
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), R.string.cannot_open, Toast.LENGTH_SHORT).show()
+            toastMessage(R.string.cannot_open)
         }
+    }
+
+    private fun toastMessage(resId: Int) {
+        try {
+            Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) { /* ignore */ }
+    }
+
+    private fun toastMessageMessage(message: String) {
+        try {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) { /* ignore */ }
     }
 
     companion object {
@@ -528,21 +685,30 @@ class FilesFragment : Fragment() {
         }
 
         fun openFileWithIntent(context: Context, file: File) {
-            if (!file.exists()) return
             try {
+                if (!file.exists()) {
+                    Toast.makeText(context, R.string.cannot_open, Toast.LENGTH_SHORT).show()
+                    return
+                }
                 val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
                 } else {
                     Uri.fromFile(file)
                 }
-                val mime = context.contentResolver.getType(uri) ?: "*/*"
+                val mime = try {
+                    context.contentResolver.getType(uri) ?: "*/*"
+                } catch (e: Exception) {
+                    "*/*"
+                }
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, mime)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(Intent.createChooser(intent, context.getString(R.string.open)))
             } catch (e: Exception) {
-                Toast.makeText(context, R.string.cannot_open, Toast.LENGTH_SHORT).show()
+                try {
+                    Toast.makeText(context, R.string.cannot_open, Toast.LENGTH_SHORT).show()
+                } catch (e2: Exception) { /* ignore */ }
             }
         }
     }

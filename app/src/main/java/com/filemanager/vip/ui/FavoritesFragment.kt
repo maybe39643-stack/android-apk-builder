@@ -27,42 +27,58 @@ class FavoritesFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.fragment_favorites, container, false)
-        recyclerFavorites = view.findViewById(R.id.recycler_favorites)
-        txtEmpty = view.findViewById(R.id.txt_empty_fav)
-        val layoutManager = LinearLayoutManager(requireContext())
-        recyclerFavorites.layoutManager = layoutManager
+        try {
+            recyclerFavorites = view.findViewById(R.id.recycler_favorites)
+            txtEmpty = view.findViewById(R.id.txt_empty_fav)
+            val layoutManager = LinearLayoutManager(requireContext())
+            recyclerFavorites.layoutManager = layoutManager
+        } catch (e: Exception) {
+            android.util.Log.e("FavoritesFragment", "View setup error: ${e.message}")
+        }
         return view
     }
 
     override fun onResume() {
         super.onResume()
-        loadFavorites()
+        try {
+            loadFavorites()
+        } catch (e: Exception) {
+            android.util.Log.e("FavoritesFragment", "Load error: ${e.message}")
+        }
     }
 
     private fun loadFavorites() {
-        val paths = Preferences.getFavorites()
-        items = paths.mapNotNull { path ->
-            val f = File(path)
-            if (f.exists()) FileItem(f) else null
-        }
-        txtEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-
-        adapter = FileAdapter(
-            items = items,
-            context = requireContext(),
-            isSelectionMode = false,
-            onItemClick = { item ->
-                FilesFragment.openFileWithIntent(requireContext(), item.file)
-            },
-            onStarClick = { item ->
-                Preferences.removeFavorite(item.file.absolutePath)
-                loadFavorites()
-            },
-            onMoreClick = { item ->
-                FilesFragment.openFileWithIntent(requireContext(), item.file)
+        try {
+            val paths = Preferences.getFavorites()
+            items = paths.mapNotNull { path ->
+                val f = File(path)
+                if (f.exists()) {
+                    try { FileItem(f) } catch (e: Exception) { null }
+                } else null
             }
-        )
-        recyclerFavorites.adapter = adapter
+            txtEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+
+            adapter = FileAdapter(
+                items = items,
+                context = requireContext(),
+                isSelectionMode = false,
+                onItemClick = { item ->
+                    FilesFragment.openFileWithIntent(requireContext(), item.file)
+                },
+                onStarClick = { item ->
+                    try {
+                        Preferences.removeFavorite(item.file.absolutePath)
+                        loadFavorites()
+                    } catch (e: Exception) { /* ignore */ }
+                },
+                onMoreClick = { item ->
+                    FilesFragment.openFileWithIntent(requireContext(), item.file)
+                }
+            )
+            recyclerFavorites.adapter = adapter
+        } catch (e: Exception) {
+            android.util.Log.e("FavoritesFragment", "loadFavorites error: ${e.message}")
+        }
     }
 
     companion object {

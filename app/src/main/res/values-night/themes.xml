@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FileManagerVIP" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary_light</item>
+        <item name="colorOnPrimary">@color/primary_dark</item>
+        <item name="colorPrimaryContainer">@color/primary_dark</item>
+        <item name="colorOnPrimaryContainer">@color/primary_light</item>
+        <item name="colorSecondary">@color/secondary_light</item>
+        <item name="colorOnSecondary">@color/secondary_dark</item>
+        <item name="colorSecondaryContainer">@color/secondary_dark</item>
+        <item name="colorOnSecondaryContainer">@color/secondary_light</item>
+        <item name="colorTertiary">@color/accent_light</item>
+        <item name="colorOnTertiary">@color/accent_dark</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/text_primary_dark</item>
+        <item name="colorSurfaceVariant">@color/bg_dark</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_dark</item>
+        <item name="colorOutline">@color/divider_dark</item>
+        <item name="colorOutlineVariant">@color/divider_dark</item>
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

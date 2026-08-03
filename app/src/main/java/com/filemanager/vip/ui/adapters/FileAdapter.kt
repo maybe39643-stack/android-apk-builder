@@ -38,27 +38,35 @@ class FileAdapter(
             view.setOnClickListener {
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
-                val item = items[pos]
-                if (isSelectionMode) toggleSelection(item) else onItemClick(item)
+                try {
+                    val item = items[pos]
+                    if (isSelectionMode) toggleSelection(item) else onItemClick(item)
+                } catch (e: Exception) { /* prevent crash */ }
             }
             view.setOnLongClickListener {
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnLongClickListener false
-                if (!isSelectionMode) {
-                    isSelectionMode = true
-                    toggleSelection(items[pos])
-                }
-                true
+                try {
+                    if (!isSelectionMode) {
+                        isSelectionMode = true
+                        toggleSelection(items[pos])
+                    }
+                    true
+                } catch (e: Exception) { false }
             }
             star.setOnClickListener {
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
-                onStarClick?.invoke(items[pos])
+                try {
+                    onStarClick?.invoke(items[pos])
+                } catch (e: Exception) { }
             }
             more.setOnClickListener {
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
-                onMoreClick?.invoke(items[pos])
+                try {
+                    onMoreClick?.invoke(items[pos])
+                } catch (e: Exception) { }
             }
         }
     }
@@ -69,36 +77,65 @@ class FileAdapter(
     }
 
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
-        val item = items[position]
-        holder.name.text = item.name
-        holder.info.text = buildInfo(item)
-        holder.icon.setImageResource(iconResFor(item))
-        holder.checkbox.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
-        holder.checkbox.isChecked = selected.contains(item.file.absolutePath)
-        val isFav = Preferences.isFavorite(item.file.absolutePath)
-        holder.star.setIconResource(if (isFav) R.drawable.ic_star else R.drawable.ic_star_outline)
+        try {
+            val item = items[position]
+            holder.name.text = item.name
+            holder.info.text = buildInfo(item)
+
+            try {
+                holder.icon.setImageResource(iconResFor(item))
+            } catch (e: Exception) {
+                // Icon resource might be missing - use default
+            }
+
+            holder.checkbox.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
+            holder.checkbox.isChecked = selected.contains(item.file.absolutePath)
+
+            try {
+                val isFav = Preferences.isFavorite(item.file.absolutePath)
+                holder.star.setIconResource(if (isFav) R.drawable.ic_star else R.drawable.ic_star_outline)
+            } catch (e: Exception) {
+                // Ignore star icon errors
+            }
+        } catch (e: Exception) {
+            // Don't crash on any binding error
+        }
     }
 
     override fun getItemCount(): Int = items.size
 
     private fun buildInfo(item: FileItem): String {
-        return if (item.isDirectory) {
-            val count = item.file.listFiles()?.size ?: 0
-            context.getString(R.string.item_count, count)
-        } else {
-            FileUtils.formatSize(item.size)
+        return try {
+            if (item.isDirectory) {
+                val count = try { item.file.listFiles()?.size ?: 0 } catch (e: Exception) { 0 }
+                context.getString(R.string.item_count, count)
+            } else {
+                FileUtils.formatSize(item.size)
+            }
+        } catch (e: Exception) {
+            return if (item.isDirectory) {
+                context.getString(R.string.item_count, 0)
+            } else {
+                "-"
+            }
         }
     }
 
-    private fun iconResFor(item: FileItem): Int = when (item.category) {
-        FileCategory.FOLDER -> R.drawable.ic_folder
-        FileCategory.IMAGE -> R.drawable.ic_image
-        FileCategory.VIDEO -> R.drawable.ic_video
-        FileCategory.AUDIO -> R.drawable.ic_audio
-        FileCategory.DOC -> R.drawable.ic_doc
-        FileCategory.APK -> R.drawable.ic_apk
-        FileCategory.DOWNLOAD -> R.drawable.ic_download
-        FileCategory.FILE -> R.drawable.ic_file
+    private fun iconResFor(item: FileItem): Int {
+        return try {
+            when (item.category) {
+                FileCategory.FOLDER -> R.drawable.ic_folder
+                FileCategory.IMAGE -> R.drawable.ic_image
+                FileCategory.VIDEO -> R.drawable.ic_video
+                FileCategory.AUDIO -> R.drawable.ic_audio
+                FileCategory.DOC -> R.drawable.ic_doc
+                FileCategory.APK -> R.drawable.ic_apk
+                FileCategory.DOWNLOAD -> R.drawable.ic_download
+                FileCategory.FILE -> R.drawable.ic_file
+            }
+        } catch (e: Exception) {
+            R.drawable.ic_file
+        }
     }
 
     fun updateItems(newItems: List<FileItem>) {
@@ -114,19 +151,28 @@ class FileAdapter(
 
     fun isSelectionMode(): Boolean = isSelectionMode
 
-    fun getSelectedItems(): List<FileItem> =
-        items.filter { selected.contains(it.file.absolutePath) }
+    fun getSelectedItems(): List<FileItem> {
+        return try {
+            items.filter { selected.contains(it.file.absolutePath) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     fun getSelectedCount(): Int = selected.size
 
     fun selectAll() {
-        items.forEach { selected.add(it.file.absolutePath) }
-        notifyDataSetChanged()
+        try {
+            items.forEach { selected.add(it.file.absolutePath) }
+            notifyDataSetChanged()
+        } catch (e: Exception) { }
     }
 
     private fun toggleSelection(item: FileItem) {
-        val path = item.file.absolutePath
-        if (selected.contains(path)) selected.remove(path) else selected.add(path)
-        notifyDataSetChanged()
+        try {
+            val path = item.file.absolutePath
+            if (selected.contains(path)) selected.remove(path) else selected.add(path)
+            notifyDataSetChanged()
+        } catch (e: Exception) { }
     }
 }
