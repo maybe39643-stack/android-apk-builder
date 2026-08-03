@@ -21,7 +21,8 @@ class FileAdapter(
     private var isSelectionMode: Boolean = false,
     private val onItemClick: (FileItem) -> Unit,
     private val onStarClick: ((FileItem) -> Unit)? = null,
-    private val onMoreClick: ((FileItem) -> Unit)? = null
+    private val onMoreClick: ((FileItem) -> Unit)? = null,
+    private val onSelectionChanged: ((Boolean) -> Unit)? = null
 ) : RecyclerView.Adapter<FileAdapter.FileViewHolder>() {
 
     private val selected = mutableSetOf<String>()
@@ -39,7 +40,7 @@ class FileAdapter(
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
                 try {
-                    val item = items[pos]
+                    val item = items.getOrNull(pos) ?: return@setOnClickListener
                     if (isSelectionMode) toggleSelection(item) else onItemClick(item)
                 } catch (e: Exception) { /* prevent crash */ }
             }
@@ -48,8 +49,9 @@ class FileAdapter(
                 if (pos == RecyclerView.NO_POSITION) return@setOnLongClickListener false
                 try {
                     if (!isSelectionMode) {
-                        isSelectionMode = true
-                        toggleSelection(items[pos])
+                        setSelectionMode(true)
+                        onSelectionChanged?.invoke(true)
+                        toggleSelection(items.getOrNull(pos) ?: return@setOnLongClickListener false)
                     }
                     true
                 } catch (e: Exception) { false }
@@ -58,14 +60,14 @@ class FileAdapter(
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
                 try {
-                    onStarClick?.invoke(items[pos])
+                    onStarClick?.invoke(items.getOrNull(pos) ?: return@setOnClickListener)
                 } catch (e: Exception) { }
             }
             more.setOnClickListener {
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
                 try {
-                    onMoreClick?.invoke(items[pos])
+                    onMoreClick?.invoke(items.getOrNull(pos) ?: return@setOnClickListener)
                 } catch (e: Exception) { }
             }
         }
@@ -78,7 +80,7 @@ class FileAdapter(
 
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
         try {
-            val item = items[position]
+            val item = items.getOrNull(position) ?: return
             holder.name.text = item.name
             holder.info.text = buildInfo(item)
 
@@ -113,7 +115,7 @@ class FileAdapter(
                 FileUtils.formatSize(item.size)
             }
         } catch (e: Exception) {
-            return if (item.isDirectory) {
+            if (item.isDirectory) {
                 context.getString(R.string.item_count, 0)
             } else {
                 "-"
@@ -144,9 +146,13 @@ class FileAdapter(
     }
 
     fun setSelectionMode(mode: Boolean) {
+        val changed = isSelectionMode != mode
         isSelectionMode = mode
         if (!mode) selected.clear()
         notifyDataSetChanged()
+        if (changed) {
+            onSelectionChanged?.invoke(mode)
+        }
     }
 
     fun isSelectionMode(): Boolean = isSelectionMode
@@ -173,6 +179,7 @@ class FileAdapter(
             val path = item.file.absolutePath
             if (selected.contains(path)) selected.remove(path) else selected.add(path)
             notifyDataSetChanged()
+            onSelectionChanged?.invoke(isSelectionMode)
         } catch (e: Exception) { }
     }
 }

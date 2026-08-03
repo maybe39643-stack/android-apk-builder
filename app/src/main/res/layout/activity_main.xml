@@ -2,7 +2,6 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:ads="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
@@ -25,7 +24,7 @@
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav_menu" />
 
-    <!-- AdMob Banner at bottom above the nav bar -->
+    <!-- AdMob Banner container (programmatically populated) -->
     <FrameLayout
         android:id="@+id/banner_container"
         android:layout_width="match_parent"
@@ -33,15 +32,6 @@
         android:layout_gravity="bottom"
         android:layout_marginBottom="56dp"
         android:visibility="gone"
-        android:background="?attr/colorSurface">
-
-        <com.google.android.gms.ads.AdView
-            android:id="@+id/ad_view"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            ads:adSize="BANNER"
-            ads:adUnitId="ca-app-pub-3940256099942544/6300978111" />
-    </FrameLayout>
+        android:background="?attr/colorSurface" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

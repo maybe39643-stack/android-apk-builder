@@ -16,6 +16,7 @@ import java.io.File
 
 class FavoritesFragment : Fragment() {
 
+    private lateinit var rootView: View
     private lateinit var recyclerFavorites: RecyclerView
     private lateinit var txtEmpty: TextView
     private lateinit var adapter: FileAdapter
@@ -27,6 +28,7 @@ class FavoritesFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.fragment_favorites, container, false)
+        rootView = view
         try {
             recyclerFavorites = view.findViewById(R.id.recycler_favorites)
             txtEmpty = view.findViewById(R.id.txt_empty_fav)
@@ -41,7 +43,9 @@ class FavoritesFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         try {
-            loadFavorites()
+            if (::recyclerFavorites.isInitialized && ::txtEmpty.isInitialized) {
+                loadFavorites()
+            }
         } catch (e: Exception) {
             android.util.Log.e("FavoritesFragment", "Load error: ${e.message}")
         }

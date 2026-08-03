@@ -57,6 +57,8 @@ class FilesFragment : Fragment() {
     private val clipboard = mutableListOf<File>()
     private var clipboardIsCopy = true
 
+    private var allItems: List<FileItem> = emptyList()
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             refresh()
@@ -75,9 +77,13 @@ class FilesFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.fragment_files, container, false)
-        bindViews(view)
-        setupToolbar()
-        setupListeners()
+        try {
+            bindViews(view)
+            setupToolbar()
+            setupListeners(view)
+        } catch (e: Exception) {
+            android.util.Log.e("FilesFragment", "onCreateView setup error: ${e.message}")
+        }
         if (filterCategory == null) {
             currentDir = try {
                 File(Preferences.getLastDir()).takeIf { it.exists() } ?: FileUtils.getPrimaryRoot()
@@ -94,7 +100,9 @@ class FilesFragment : Fragment() {
             if (ensurePermission()) refresh() else swipeRefresh.isRefreshing = false
         } catch (e: Exception) {
             // Don't crash if permission check fails
-            swipeRefresh.isRefreshing = false
+            try {
+                swipeRefresh.isRefreshing = false
+            } catch (e2: Exception) { /* ignore */ }
         }
     }
 
@@ -131,7 +139,7 @@ class FilesFragment : Fragment() {
         updateToolbar()
     }
 
-    private fun setupListeners() {
+    private fun setupListeners(view: View) {
         recyclerFiles.layoutManager = LinearLayoutManager(requireContext())
         adapter = FileAdapter(
             items = emptyList(),
@@ -139,7 +147,10 @@ class FilesFragment : Fragment() {
             isSelectionMode = false,
             onItemClick = { item -> onFileClick(item) },
             onStarClick = { item -> toggleFavorite(item) },
-            onMoreClick = { item -> showActionsDialog(item) }
+            onMoreClick = { item -> showActionsDialog(item) },
+            onSelectionChanged = { inSelection ->
+                updateSelectionBar()
+            }
         )
         recyclerFiles.adapter = adapter
 
@@ -158,40 +169,44 @@ class FilesFragment : Fragment() {
             }
         })
 
-        // Selection bar buttons - wrap in safe click handlers
+        // Selection bar buttons - use the passed view reference (critical fix)
         try {
-            view?.findViewById<MaterialButton>(R.id.btn_close_selection)?.setOnClickListener {
+            view.findViewById<MaterialButton>(R.id.btn_close_selection).setOnClickListener {
                 safeSetSelectionMode(false)
                 updateSelectionBar()
             }
-            view?.findViewById<MaterialButton>(R.id.btn_select_all)?.setOnClickListener {
+            view.findViewById<MaterialButton>(R.id.btn_select_all).setOnClickListener {
                 safeSelectAll()
                 updateSelectionBar()
             }
-            view?.findViewById<MaterialButton>(R.id.btn_copy)?.setOnClickListener {
+            view.findViewById<MaterialButton>(R.id.btn_copy).setOnClickListener {
                 copySelected()
             }
-            view?.findViewById<MaterialButton>(R.id.btn_move)?.setOnClickListener {
+            view.findViewById<MaterialButton>(R.id.btn_move).setOnClickListener {
                 moveSelected()
             }
-            view?.findViewById<MaterialButton>(R.id.btn_delete)?.setOnClickListener {
+            view.findViewById<MaterialButton>(R.id.btn_delete).setOnClickListener {
                 deleteSelected()
             }
-            view?.findViewById<MaterialButton>(R.id.btn_paste)?.setOnClickListener {
+            view.findViewById<MaterialButton>(R.id.btn_paste).setOnClickListener {
                 pasteClipboard()
             }
-        } catch (e: Exception) { /* ignore missing buttons */ }
+        } catch (e: Exception) {
+            android.util.Log.e("FilesFragment", "setup selection bar buttons: ${e.message}")
+        }
     }
 
     private fun safeSetSelectionMode(mode: Boolean) {
         try {
             adapter.setSelectionMode(mode)
+            updateSelectionBar()
         } catch (e: Exception) { /* ignore */ }
     }
 
     private fun safeSelectAll() {
         try {
             adapter.selectAll()
+            updateSelectionBar()
         } catch (e: Exception) { /* ignore */ }
     }
 
@@ -201,7 +216,7 @@ class FilesFragment : Fragment() {
                 if (Environment.isExternalStorageManager()) {
                     true
                 } else {
-                    MaterialAlertDialogBuilder(requireContext())
+                    MaterialAlertDialogBuilder(requireActivity())
                         .setTitle(R.string.storage_permission_title)
                         .setMessage(R.string.permission_needed)
                         .setPositiveButton(R.string.grant) { _, _ ->
@@ -272,15 +287,15 @@ class FilesFragment : Fragment() {
             }
             updateToolbar()
         } catch (e: Exception) {
-            swipeRefresh.isRefreshing = false
+            try {
+                swipeRefresh.isRefreshing = false
+            } catch (e2: Exception) { /* ignore */ }
             // Show error but don't crash
             try {
                 Toast.makeText(requireContext(), "Error loading files", Toast.LENGTH_SHORT).show()
             } catch (e2: Exception) { /* ignore */ }
         }
     }
-
-    private var allItems: List<FileItem> = emptyList()
 
     private fun applySearch(query: String) {
         val q = query.trim().lowercase()
@@ -318,7 +333,10 @@ class FilesFragment : Fragment() {
     }
 
     private fun onFileClick(item: FileItem) {
-        if (adapter.isSelectionMode()) return
+        if (adapter.isSelectionMode()) {
+            // In selection mode, tapping toggles selection handled by adapter
+            return
+        }
         if (item.isDirectory) {
             val dirFile = item.file
             if (!dirFile.exists() || !dirFile.canRead()) {
@@ -355,6 +373,7 @@ class FilesFragment : Fragment() {
 
     private fun updateSelectionBar() {
         try {
+            if (!::adapter.isInitialized) return
             val inSelection = adapter.isSelectionMode()
             selectionBar.visibility = if (inSelection) View.VISIBLE else View.GONE
             txtSelectionCount.text = adapter.getSelectedCount().toString()
@@ -407,7 +426,7 @@ class FilesFragment : Fragment() {
     private fun confirmDelete(files: List<File>) {
         try {
             val names = files.joinToString(", ") { it.name }
-            MaterialAlertDialogBuilder(requireContext())
+            MaterialAlertDialogBuilder(requireActivity())
                 .setTitle(R.string.delete)
                 .setMessage(getString(R.string.delete_confirm, names))
                 .setPositiveButton(R.string.delete) { _, _ ->
@@ -463,12 +482,14 @@ class FilesFragment : Fragment() {
             val input = dialogView.findViewById<TextInputEditText>(R.id.input_name)
             val btnCancel = dialogView.findViewById<Button>(R.id.btn_cancel)
             val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
-            val dialog = MaterialAlertDialogBuilder(requireContext())
+            val dialog = MaterialAlertDialogBuilder(requireActivity())
                 .setView(dialogView)
                 .create()
             btnCancel.setOnClickListener { try { dialog.dismiss() } catch (e: Exception) { } }
             btnOk.setOnClickListener {
-                val name = input.text?.toString()?.trim().orEmpty()
+                val name = try {
+                    input.text?.toString()?.trim().orEmpty()
+                } catch (e: Exception) { "" }
                 if (name.isEmpty()) {
                     toastMessage(R.string.invalid_name)
                     return@setOnClickListener
@@ -517,7 +538,7 @@ class FilesFragment : Fragment() {
                 actionShare.visibility = View.GONE
             }
 
-            val dialog = MaterialAlertDialogBuilder(requireContext())
+            val dialog = MaterialAlertDialogBuilder(requireActivity())
                 .setView(dialogView)
                 .create()
 
@@ -563,11 +584,11 @@ class FilesFragment : Fragment() {
 
     private fun showRenameDialog(item: FileItem) {
         try {
-            val input = EditText(requireContext()).apply {
+            val input = EditText(requireActivity()).apply {
                 setText(item.name)
                 selectAll()
             }
-            MaterialAlertDialogBuilder(requireContext())
+            MaterialAlertDialogBuilder(requireActivity())
                 .setTitle(R.string.rename_to)
                 .setView(input)
                 .setPositiveButton(R.string.create) { _, _ ->
@@ -627,7 +648,7 @@ class FilesFragment : Fragment() {
                 propItems.visibility = View.GONE
             }
 
-            val dialog = MaterialAlertDialogBuilder(requireContext())
+            val dialog = MaterialAlertDialogBuilder(requireActivity())
                 .setView(dialogView)
                 .create()
             btnClose.setOnClickListener { try { dialog.dismiss() } catch (e: Exception) { } }

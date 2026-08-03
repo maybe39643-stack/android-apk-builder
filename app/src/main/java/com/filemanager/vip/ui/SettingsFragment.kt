@@ -17,6 +17,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 
 class SettingsFragment : Fragment() {
 
+    private lateinit var rootView: View
     private lateinit var txtVipStatus: TextView
     private lateinit var btnWatchAd: MaterialButton
     private lateinit var switchDark: SwitchMaterial
@@ -28,6 +29,7 @@ class SettingsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.fragment_settings, container, false)
+        rootView = view
         try {
             txtVipStatus = view.findViewById(R.id.txt_vip_status)
             btnWatchAd = view.findViewById(R.id.btn_watch_ad_vip)
@@ -45,31 +47,12 @@ class SettingsFragment : Fragment() {
             }
 
             btnWatchAd.setOnClickListener {
-                try {
-                    val activity = requireActivity()
-                    AdManager.showRewarded(activity) {
-                        try {
-                            Preferences.setVip(true)
-                            updateVipUi()
-                            Toast.makeText(requireContext(), R.string.vip_active, Toast.LENGTH_LONG).show()
-                        } catch (e: Exception) { /* ignore */ }
-                    }
-                } catch (e: Exception) {
-                    try {
-                        Toast.makeText(requireContext(), getString(R.string.error), Toast.LENGTH_SHORT).show()
-                    } catch (e2: Exception) { /* ignore */ }
-                }
+                handleWatchAdClick()
             }
 
             switchDark.isChecked = Preferences.isDarkMode()
             switchDark.setOnCheckedChangeListener { _, isChecked ->
-                try {
-                    Preferences.setDarkMode(isChecked)
-                    AppCompatDelegate.setDefaultNightMode(
-                        if (isChecked) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-                    )
-                    requireActivity().recreate()
-                } catch (e: Exception) { /* ignore */ }
+                handleDarkModeToggle(isChecked)
             }
         } catch (e: Exception) {
             android.util.Log.e("SettingsFragment", "Setup error: ${e.message}")
@@ -77,8 +60,61 @@ class SettingsFragment : Fragment() {
         return view
     }
 
+    private fun handleWatchAdClick() {
+        try {
+            val act = activity ?: return
+            if (!isAdded) return
+
+            // If AdMob is not ready, still allow VIP activation for demo
+            if (!AdManager.isAdsReady()) {
+                activateVip()
+                return
+            }
+
+            AdManager.showRewarded(act) {
+                handleRewardEarned()
+            }
+        } catch (e: Exception) {
+            try {
+                // Fallback: activate VIP even if ad fails
+                activateVip()
+            } catch (e2: Exception) { /* ignore */ }
+        }
+    }
+
+    private fun handleRewardEarned() {
+        try {
+            if (!isAdded) return
+            activateVip()
+        } catch (e: Exception) { /* ignore */ }
+    }
+
+    private fun activateVip() {
+        try {
+            Preferences.setVip(true)
+            updateVipUi()
+            try {
+                Toast.makeText(requireContext(), R.string.vip_active, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) { /* ignore */ }
+        } catch (e: Exception) { /* ignore */ }
+    }
+
+    private fun handleDarkModeToggle(isChecked: Boolean) {
+        try {
+            Preferences.setDarkMode(isChecked)
+            AppCompatDelegate.setDefaultNightMode(
+                if (isChecked) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
+            )
+            val act = activity
+            if (act != null && isAdded) {
+                act.recreate()
+            }
+        } catch (e: Exception) { /* ignore */ }
+    }
+
     private fun updateVipUi() {
         try {
+            if (!::txtVipStatus.isInitialized || !::btnWatchAd.isInitialized) return
             val isVip = Preferences.isVip()
             if (isVip) {
                 txtVipStatus.text = getString(R.string.vip_active)

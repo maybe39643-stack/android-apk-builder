@@ -1,10 +1,10 @@
 package com.filemanager.vip
 
 import android.app.Application
+import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import com.filemanager.vip.ads.AdManager
 import com.filemanager.vip.util.Preferences
-import android.content.Context
 
 class App : Application() {
 
@@ -15,15 +15,20 @@ class App : Application() {
             Preferences.init(this)
 
             // Apply saved dark mode setting
+            val isDark = try {
+                Preferences.isDarkMode()
+            } catch (e: Exception) {
+                false
+            }
             AppCompatDelegate.setDefaultNightMode(
-                if (Preferences.isDarkMode()) {
+                if (isDark) {
                     AppCompatDelegate.MODE_NIGHT_YES
                 } else {
                     AppCompatDelegate.MODE_NIGHT_NO
                 }
             )
 
-            // Initialize AdMob with test ads
+            // Initialize AdMob with test ads - deferred banner loading handled in AdManager
             AdManager.init(this)
         } catch (e: Exception) {
             // Never crash in Application.onCreate

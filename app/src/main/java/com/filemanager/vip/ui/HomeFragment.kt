@@ -11,7 +11,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.filemanager.vip.R
-import com.filemanager.vip.ads.AdManager
 import com.filemanager.vip.model.FileCategory
 import com.filemanager.vip.model.FileItem
 import com.filemanager.vip.ui.adapters.CategoryAdapter
@@ -22,6 +21,7 @@ import java.io.File
 
 class HomeFragment : Fragment() {
 
+    private lateinit var rootView: View
     private lateinit var recyclerCategories: RecyclerView
     private lateinit var recyclerRecent: RecyclerView
     private lateinit var storageProgress: ProgressBar
@@ -39,25 +39,32 @@ class HomeFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        try {
+        return try {
             val view = inflater.inflate(R.layout.fragment_home, container, false)
+            rootView = view
             bindViews(view)
-            setupCategories()
-            return view
+            if (::recyclerCategories.isInitialized && ::recyclerRecent.isInitialized) {
+                setupCategories()
+            }
+            view
         } catch (e: Exception) {
-            // Fallback to a simple view if inflation fails
             android.util.Log.e("HomeFragment", "Inflation failed: ${e.message}")
-            return inflater.inflate(R.layout.fragment_home, container, false)
+            inflater.inflate(R.layout.fragment_home, container, false)
         }
     }
 
     override fun onResume() {
         super.onResume()
         try {
-            updateStorageInfo()
-            loadRecentFiles()
-            updateVipBanner()
-            updateCategoryCounts()
+            if (::recyclerCategories.isInitialized && ::recyclerRecent.isInitialized &&
+                ::storageProgress.isInitialized && ::txtUsed.isInitialized &&
+                ::txtFree.isInitialized && ::txtPercent.isInitialized
+            ) {
+                updateStorageInfo()
+                loadRecentFiles()
+                updateVipBanner()
+                updateCategoryCounts()
+            }
         } catch (e: Exception) {
             // Don't crash on any home screen error
             android.util.Log.e("HomeFragment", "onResume error: ${e.message}")
@@ -77,10 +84,11 @@ class HomeFragment : Fragment() {
 
             vipBanner.setOnClickListener {
                 try {
-                    (activity as? com.filemanager.vip.MainActivity)?.let { act ->
+                    val act = activity
+                    if (act is com.filemanager.vip.MainActivity) {
                         act.findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(
                             R.id.bottom_nav
-                        )?.selectedItemId = R.id.nav_settings
+                        ).selectedItemId = R.id.nav_settings
                     }
                 } catch (e: Exception) { /* ignore */ }
             }
@@ -139,11 +147,16 @@ class HomeFragment : Fragment() {
     }
 
     private fun openCategory(category: FileCategory) {
-        val filesFragment = FilesFragment.newInstance(category = category)
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(R.id.container, filesFragment)
-            .addToBackStack(null)
-            .commitAllowingStateLoss()
+        try {
+            val fm = activity?.supportFragmentManager ?: return
+            val filesFragment = FilesFragment.newInstance(category = category)
+            fm.beginTransaction()
+                .replace(R.id.container, filesFragment)
+                .addToBackStack(null)
+                .commitAllowingStateLoss()
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
 
     private fun updateStorageInfo() {

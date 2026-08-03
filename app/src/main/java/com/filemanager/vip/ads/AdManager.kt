@@ -1,7 +1,6 @@
 package com.filemanager.vip.ads
 
 import android.app.Activity
-import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
@@ -47,11 +46,20 @@ object AdManager : LifecycleObserver {
     private var onRewardedCallback: (() -> Unit)? = null
     private var firstLaunchDone = false
     private var rewardedFailed = false
+
+    @Volatile
     private var adsInitialized = false
+    @Volatile
+    private var adsReady = false
 
     /** Tracks the currently visible activity (set from MainActivity) */
     @Volatile
     private var currentActivity: Activity? = null
+
+    // Queue pending banner loads until AdMob is ready
+    private data class PendingBanner(val activity: Activity, val container: ViewGroup)
+
+    private val pendingBanners = mutableListOf<PendingBanner>()
 
     /** Call once in Application class or MainActivity */
     fun init(context: Context) {
@@ -59,18 +67,38 @@ object AdManager : LifecycleObserver {
         adsInitialized = true
         try {
             // Set test device configuration
+            val testDevices = mutableListOf(AdRequest.DEVICE_ID_EMULATOR)
+            // Add common physical test device IDs here
+            // To find your device ID, check Logcat after running the app once
+            testDevices.add("TEST_DEVICE_ID_1")
+            testDevices.add("TEST_DEVICE_ID_2")
+
             MobileAds.setRequestConfiguration(
                 RequestConfiguration.Builder()
-                    .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
+                    .setTestDeviceIds(testDevices)
                     .build()
             )
-            
-            MobileAds.initialize(context) { status ->
-                Log.d(TAG, "MobileAds init status: $status")
-                // Load ads regardless - they'll be ready when init completes
+
+            MobileAds.initialize(context) { _ ->
+                adsReady = true
+                Log.d(TAG, "MobileAds initialized successfully")
+                // Load ads now that init is complete
                 loadInterstitial(context)
                 loadRewarded(context)
                 loadAppOpen(context)
+
+                // Flush pending banner requests
+                synchronized(pendingBanners) {
+                    val pending = pendingBanners.toList()
+                    pendingBanners.clear()
+                    pending.forEach { pb ->
+                        try {
+                            loadBannerInternal(pb.activity, pb.container)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Pending banner load error: ${e.message}")
+                        }
+                    }
+                }
             }
             ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         } catch (e: Exception) {
@@ -89,8 +117,26 @@ object AdManager : LifecycleObserver {
         }
     }
 
+    fun isAdsReady(): Boolean = adsReady
+
     // ==================== BANNER ====================
     fun loadBanner(activity: Activity, container: ViewGroup) {
+        try {
+            if (!adsReady) {
+                // Queue the banner until AdMob init completes
+                synchronized(pendingBanners) {
+                    pendingBanners.add(PendingBanner(activity, container))
+                }
+                Log.d(TAG, "Banner queued - waiting for AdMob init")
+                return
+            }
+            loadBannerInternal(activity, container)
+        } catch (e: Exception) {
+            Log.e(TAG, "Banner load error: ${e.message}")
+        }
+    }
+
+    private fun loadBannerInternal(activity: Activity, container: ViewGroup) {
         try {
             val adView = AdView(activity)
             adView.adUnitId = BANNER_ID
@@ -98,6 +144,21 @@ object AdManager : LifecycleObserver {
             adView.adListener = object : com.google.android.gms.ads.AdListener() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     Log.d(TAG, "Banner failed: ${error.message} (code: ${error.code})")
+                    // Retry after a delay
+                    container.postDelayed({
+                        try {
+                            if (container.childCount > 0) {
+                                container.removeAllViews()
+                            }
+                            val retryView = AdView(activity)
+                            retryView.adUnitId = BANNER_ID
+                            retryView.setAdSize(AdSize.BANNER)
+                            retryView.loadAd(AdRequest.Builder().build())
+                            container.addView(retryView)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Banner retry error: ${e.message}")
+                        }
+                    }, 5000)
                 }
 
                 override fun onAdLoaded() {
@@ -108,13 +169,13 @@ object AdManager : LifecycleObserver {
                     Log.d(TAG, "Banner impression")
                 }
             }
-            
+
             val request = AdRequest.Builder().build()
             container.removeAllViews()
             container.addView(adView)
             adView.loadAd(request)
         } catch (e: Exception) {
-            Log.e(TAG, "Banner load error: ${e.message}")
+            Log.e(TAG, "Banner load internal error: ${e.message}")
         }
     }
 
@@ -200,7 +261,10 @@ object AdManager : LifecycleObserver {
             val ad = rewardedAd
             if (ad == null) {
                 loadRewarded(activity)
-                onReward.invoke() // give reward anyway if not loaded (VIP unlock demo)
+                // Give reward anyway if not loaded (VIP unlock demo)
+                activity.runOnUiThread {
+                    onReward.invoke()
+                }
                 return
             }
             onRewardedCallback = onReward
@@ -213,6 +277,8 @@ object AdManager : LifecycleObserver {
                 override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                     rewardedAd = null
                     loadRewarded(activity)
+                    // Still give reward on failure for demo purposes
+                    onRewardedCallback?.invoke()
                 }
             }
             ad.show(activity) { rewardItem ->
@@ -221,7 +287,9 @@ object AdManager : LifecycleObserver {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Rewarded show error: ${e.message}")
-            onReward.invoke() // Give reward on error
+            activity.runOnUiThread {
+                onReward.invoke() // Give reward on error
+            }
         }
     }
 
